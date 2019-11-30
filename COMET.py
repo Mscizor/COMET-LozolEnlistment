@@ -166,47 +166,42 @@ def main():
     with open('users.txt') as users_txt:
         for user in users_txt.readlines():
             parsed_user = parse_as_user(user.strip())
-            if parsed_user != None:
+            if parsed_user is None:
                 users[parsed_user.username] = parsed_user
             
     with open('classes.txt')as classes_txt:
         for cl in classes_txt.readlines():
-            print (cl)
             parsed_class = parse_as_class(cl.strip())
-            if parsed_class != None:
+            if parsed_class is None:
                 classes[parsed_class.name] = parsed_class
 
-    for user in users.values():
-        print(f'{user.username}, {user.password}')
-
-    for cl in classes.values():
-        print(f'{cl.name}, {cl.units}, {cl.prereqs}')
-    '''    
     exit_login = False
+    user = None
     while not exit_login:
-        design_line('=', 100)
+        print(design_line('=', 100))
         username = input('Lozol Account Name: ')
         password = input('Lozol Account Password: ')
-        design_line('=', 100)
+        print(design_line('=', 100))
 
         found = False
-        for user in users:
-            if user.username == username and user.password == password:
-                found = True
-                break
-
-        if not found:
+        if username not in users or users[username].password != password:
             print('Invalid login details.')
-            query = input('Exit program? (yes or no)').lower().split()
-            for s in query:
-                if s == 'yes': exit_login = True
+            while (True):
+                query = input('Exit program? (y or n): ').lower()
+                if 'y' in query: 
+                    exit_login = True
+                    break
+                elif 'n' in query:
+                    break
         else:
-            print('Login found. Proceeding to log-in page.')
-            break
-    
+            print('Login found. Proceeding to user page.')
+            
     if not exit_login:
         pass #TODO(Mscizor) Log-in page for admin and student
-    '''
+
+    print (design_line('=', 100))
+    print ('Exiting...')
+
     with open('users.txt', 'w') as users_txt:
         for i, user in enumerate(users.values()):
             users_txt.write(user.info())
