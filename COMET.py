@@ -165,14 +165,14 @@ def main():
 
     with open('users.txt') as users_txt:
         for user in users_txt.readlines():
-            parsed_user = parse_as_user(user.strip('\n'))
+            parsed_user = parse_as_user(user.strip())
             if parsed_user != None:
                 users[parsed_user.username] = parsed_user
             
     with open('classes.txt')as classes_txt:
         for cl in classes_txt.readlines():
             print (cl)
-            parsed_class = parse_as_class(cl.strip('\n'))
+            parsed_class = parse_as_class(cl.strip())
             if parsed_class != None:
                 classes[parsed_class.name] = parsed_class
 
@@ -181,9 +181,6 @@ def main():
 
     for cl in classes.values():
         print(f'{cl.name}, {cl.units}, {cl.prereqs}')
-
-    users['super'] = Admin('super', 'man')
-    classes['magic_class'] = Class('magic', 2, ['None'])
     '''    
     exit_login = False
     while not exit_login:
@@ -211,12 +208,16 @@ def main():
         pass #TODO(Mscizor) Log-in page for admin and student
     '''
     with open('users.txt', 'w') as users_txt:
-        for user in users.values():
-            users_txt.write(user.info() + '\n')
+        for i, user in enumerate(users.values()):
+            users_txt.write(user.info())
+            if i != len(users.values()) - 1:
+                users_txt.write('\n')
 
     with open('classes.txt', 'w') as classes_txt:
-        for cl in classes.values():
-            classes_txt.write(cl.info() + '\n')
+        for i, cl in enumerate(classes.values()):
+            classes_txt.write(cl.info())
+            if i != len(classes.values()) - 1:
+                classes_txt.write('\n')
 
 if __name__ == '__main__':
     main()
