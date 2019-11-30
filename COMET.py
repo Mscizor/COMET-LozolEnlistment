@@ -37,8 +37,9 @@
                 Take Class
                 Drop Class
 """
+import json
 
-class User(object):
+class User:
     def __init__(self, username, password):
         self.username = username
         self.password = password
@@ -109,25 +110,54 @@ def design_line(s, num):
     return ''.join(str)
 
 def main():
+    
     classes = []
     users = []
     users.append(Admin('admin', 'admin'))
 
-    design_line('=', 100)
-    username = input('Lozol Account Name: ')
-    password = input('Lozol Account Password: ')
-    design_line('=', 100)
+    with open('users.txt').readlines() as users_txt: #TODO(Mscizor) Read user and class data from text
+        for user in users_txt:
+            pass
 
-    found = False
-    for user in users:
-        if user.username == username and user.password == password:
-            found = True
+    with open('classes.txt').readlines() as classes_txt:
+        for cl in classes_txt:
+            pass
+
+    exit_login = False
+    while not exit_login:
+        design_line('=', 100)
+        username = input('Lozol Account Name: ')
+        password = input('Lozol Account Password: ')
+        design_line('=', 100)
+
+        found = False
+        for user in users:
+            if user.username == username and user.password == password:
+                found = True
+                break
+
+        if not found:
+            print('Invalid login details.')
+            query = input('Exit program? (yes or no)').lower().split()
+            for s in query:
+                if s == 'yes': exit_login = True
+        else:
+            print('Login found. Proceeding to log-in page.')
             break
+    
+    if not exit_login:
+        pass #TODO(Mscizor) Log-in page for admin and student
 
-    if not found:
-        print('Invalid login details.')
-    else:
-        print('Login found. Proceeding to log-in page.')
+    with open('users.txt', 'w') as users_txt: #TODO(Mscizor) Write user and class data to text
+        for user in users:
+            if isinstance(user, Admin):
+                pass
+            elif isinstance (user, Student):
+                pass
+
+    with open('classes.txt', 'w') as classes_txt:
+        for cl in classes:
+            pass
 
 if __name__ == '__main__':
     main()
