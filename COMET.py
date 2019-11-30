@@ -48,19 +48,26 @@ class Admin(User):
     def __init__(self, username, password):
         super().__init__(username, password)
     
+    def info(self):
+        return f'Admin - {self.username} - {self.password}'
+
     def __str__(self):
-        return 'Admin: {}'.format(self.username)
+        return f'Admin: {self.username} - {self.password}'
         
 class Student(User):
     def __init__(self, id_number, password, name, unit_limit):
         super().__init__(id_number, password)
         self.name = name
-        self.unit_limit = unit_limit
+        self.unit_limit = int(unit_limit)
     
+    def info(self):
+        return f'Student - {self.username} - {self.password} - {self.name} - {self.unit_limit}'
+
     def __str__(self):
-        return 'Student: {}({}) [{}] - {}'.format(self.username, self.id_number, self.name, self.unit_limit)
+        return f'Student - {self.username} - {self.password} - {self.name} - {self.unit_limit}'
 
 class Class:
+    # Prereqs as a str for each, to be processed later
     def __init__(self, name, units, prereqs):
         self.name = name
         self.units = units
@@ -75,15 +82,57 @@ class Class:
     def add_prereq(self, new_prereq):
         self.prereqs.append(new_prereq)
     
-    def remove_prereq(self, index):
-        del self.prereqs[index]
+    def remove_prereq(self, prereq):
+        self.prereqs.remove(prereq)
     
-    def __str__(self):
-        str = '[ {}: {} - [ '.format(self.name, self.units)
-        for c in self.prereqs:
-            str += '{} '.format(c.name)
-        str += ']]'
-        return str
+    def info(self):
+        info = [f'{self.name} - {self.units} - ']
+        for cl in self.prereqs:
+            info.append (f'{cl} ')
+        return ''.join(info)
+
+def parse_as_user(user):
+    '''Takes a string representing user info and creates a user with that information.
+
+    Parses a string and gets the relevant information such as username and password and
+    returns an instance of a sub-class of a User (either Student or Admin).
+
+    Args:
+        user: String representation of the information of the user
+
+    Returns:
+        Either a Student or an Admin with the relevant information given in the string.
+    '''
+    read = user.split(' - ')
+    if read[0] == 'Student':
+        if len(read) < 5:
+            return None
+        else:
+            return Student(read[1], read[2], read[3], read[4])
+    else:
+        if len(read) < 3:
+            return None
+        else:
+            return Admin(read[1], read[2])
+
+def parse_as_class(cl):
+    '''Takes a string representing class info and creates a class with that information.
+
+    Parses a string and gets the relevant information such as the class name and units,
+    and returns an instance of a Class.
+
+    Args:
+        cl: String representation of the class
+
+    Returns:
+        Either a Student or an Admin with the relevant information given in the string.
+    '''
+    read = cl.split(' - ')
+    if len(read) < 3:
+        return None
+    else:
+        prereqs = read[2].split(' ')
+        return Class(read[0], read[1], prereqs)
 
 def design_line(s, num):
     '''Returns a line of the specified string a number of times.
@@ -110,19 +159,32 @@ def design_line(s, num):
     return ''.join(str)
 
 def main():
-    
-    classes = []
-    users = []
-    users.append(Admin('admin', 'admin'))
+    classes = {}
+    users = {}
+    users['test'] = Admin ('test', 'test')
 
-    with open('users.txt').readlines() as users_txt: #TODO(Mscizor) Read user and class data from text
-        for user in users_txt:
-            pass
+    with open('users.txt') as users_txt:
+        for user in users_txt.readlines():
+            parsed_user = parse_as_user(user.strip('\n'))
+            if parsed_user != None:
+                users[parsed_user.username] = parsed_user
+            
+    with open('classes.txt')as classes_txt:
+        for cl in classes_txt.readlines():
+            print (cl)
+            parsed_class = parse_as_class(cl.strip('\n'))
+            if parsed_class != None:
+                classes[parsed_class.name] = parsed_class
 
-    with open('classes.txt').readlines() as classes_txt:
-        for cl in classes_txt:
-            pass
+    for user in users.values():
+        print(f'{user.username}, {user.password}')
 
+    for cl in classes.values():
+        print(f'{cl.name}, {cl.units}, {cl.prereqs}')
+
+    users['super'] = Admin('super', 'man')
+    classes['magic_class'] = Class('magic', 2, ['None'])
+    '''    
     exit_login = False
     while not exit_login:
         design_line('=', 100)
@@ -147,17 +209,14 @@ def main():
     
     if not exit_login:
         pass #TODO(Mscizor) Log-in page for admin and student
-
-    with open('users.txt', 'w') as users_txt: #TODO(Mscizor) Write user and class data to text
-        for user in users:
-            if isinstance(user, Admin):
-                pass
-            elif isinstance (user, Student):
-                pass
+    '''
+    with open('users.txt', 'w') as users_txt:
+        for user in users.values():
+            users_txt.write(user.info() + '\n')
 
     with open('classes.txt', 'w') as classes_txt:
-        for cl in classes:
-            pass
+        for cl in classes.values():
+            classes_txt.write(cl.info() + '\n')
 
 if __name__ == '__main__':
     main()
