@@ -158,6 +158,21 @@ def design_line(s, num):
         str.append (s)
     return ''.join(str)
 
+def enrol_class(student, classes):
+    pass
+
+def drop_class(student, classes):
+    pass
+
+def create_class(admin, classes):
+    pass
+
+def remove_class(admin, classes):
+    pass
+
+def edit_student(edited_user, is_admin = False):
+    pass
+
 def main():
     classes = {}
     users = {}
@@ -166,20 +181,20 @@ def main():
     with open('users.txt') as users_txt:
         for user in users_txt.readlines():
             parsed_user = parse_as_user(user.strip())
-            if parsed_user is None:
+            if parsed_user is not None:
                 users[parsed_user.username] = parsed_user
             
     with open('classes.txt')as classes_txt:
         for cl in classes_txt.readlines():
             parsed_class = parse_as_class(cl.strip())
-            if parsed_class is None:
+            if parsed_class is not None:
                 classes[parsed_class.name] = parsed_class
 
     exit_login = False
-    user = None
-    while not exit_login:
+    login_user = None
+    while True:
         print(design_line('=', 100))
-        username = input('Lozol Account Name: ')
+        username = input('Lozol Account Username: ')
         password = input('Lozol Account Password: ')
         print(design_line('=', 100))
 
@@ -194,10 +209,25 @@ def main():
                 elif 'n' in query:
                     break
         else:
+            login_user = users[username]
             print('Login found. Proceeding to user page.')
+            break
             
     if not exit_login:
-        pass #TODO(Mscizor) Log-in page for admin and student
+        if isinstance(login_user, Admin):
+            print (f'Welcome to your administrator dashboard, {login_user.username}')
+            print ('[1] Create Class')
+            print ('[2] Remove Class')
+            print ('[3] Edit Student Information')
+            num = input ('Please enter your choice: ')
+            choices = {1 : create_class, 2 : remove_class, 3 : edit_student(None, True)} #TODO(Mscizor) : Finish defined functions here
+        elif isinstance(login_user, Student):
+            print (f'Welcome to your Lozol Account, {login_user.name}')
+            print ('[1] Enrol in Class')
+            print ('[2] Drop a Class')
+            print ('[3] Edit your Information')
+            num = int(input('Please input your choice: '))
+            choices = {1 : enrol_class, 2 : remove_class, 3 : edit_student(login_user)} #TODO(Mscizor) : Finish defined functions here
 
     print (design_line('=', 100))
     print ('Exiting...')

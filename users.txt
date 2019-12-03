@@ -2,3 +2,4 @@ Admin - test - test
 Admin - admin - admin
 Admin - magic - two
 Admin - super - man
+Student - 11828579 - password - Jan Uriel Marcelo - 21
