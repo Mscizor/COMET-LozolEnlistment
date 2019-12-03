@@ -1,2 +1,4 @@
-CCPROG - 3 - None 
-magic - 2 - None 
+CCPROG1 / G302B - 3 - None 
+magic / M204 - 2 - None 
+CCPROG2 / G302A - 3 - CCPROG1 
+CCPROG3 / G304A - 3 - CCPROG2 

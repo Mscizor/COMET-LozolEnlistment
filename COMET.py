@@ -68,14 +68,18 @@ class Student(User):
 
 class Class:
     # Prereqs as a str for each, to be processed later
-    def __init__(self, name, units, prereqs):
+    def __init__(self, name, classroom, units, prereqs):
         self.name = name
+        self.classroom = classroom
         self.units = units
         self.prereqs = prereqs
         
     def set_name(self, new_name):
         self.name = new_name
         
+    def set_classroom(self, new_classroom):
+        self.classroom = new_classroom
+
     def set_units(self, new_units):
         self.units = new_units
             
@@ -86,7 +90,7 @@ class Class:
         self.prereqs.remove(prereq)
     
     def info(self):
-        info = [f'{self.name} - {self.units} - ']
+        info = [f'{self.name} / {self.classroom} - {self.units} - ']
         for cl in self.prereqs:
             info.append (f'{cl} ')
         return ''.join(info)
@@ -132,7 +136,8 @@ def parse_as_class(cl):
         return None
     else:
         prereqs = read[2].split(' ')
-        return Class(read[0], read[1], prereqs)
+        class_details = read[0].split(' / ')
+        return Class(class_details[0], class_details[1], read[1], prereqs)
 
 def design_line(s, num):
     '''Returns a line of the specified string a number of times.
@@ -148,7 +153,7 @@ def design_line(s, num):
 
         '====='
 
-        Returns nothing if num is less than 0.
+        Returns an empty string if num is less than 0.
     '''
 
     if num < 0:
@@ -164,10 +169,72 @@ def enrol_class(student, classes):
 def drop_class(student, classes):
     pass
 
-def create_class(admin, classes):
-    pass
+def create_class(classes):
+    '''Asks admin for inputs to create a number of new classes.
 
-def remove_class(admin, classes):
+    Asks the admin for details which include name of classes, classroom number, number of units, 
+    and prerequisites to create any number of new classes.
+
+    Args:
+        classes: The already existing list of classes
+    '''
+
+    while True:
+        print('List of Classes')
+        for cl in classes.values():
+            print(f'{cl.name} in Room {cl.classroom} with units {cl.units}')
+
+        class_name = None
+        classroom = None
+        while True:
+            class_name = input('Please input the name of the new class: ')
+            classroom = input("Please input where it's going to be held: ")
+            if f'{class_name} / {classroom}' in classes:
+                print('Class with same name and classroom already found, please try again.')
+            else:
+                break
+        
+        units = None
+        while True:
+            units = int(input('Please input how many units the class will be worth: '))
+            if units < 0:
+                print('Units cannot be less than 0, please try again.')
+            else:
+                break
+        
+        prereqs = None
+        found_class = None
+        while True:
+            prereqs = input('Please input what prereqs the class will or will not have (separated by spaces): ').split()
+            for prereq in prereqs:
+                if prereq not in [cl.name for cl in classes.values()]:
+                    found_class = prereq
+                    break
+            else:
+                break
+            
+            print(f'Specified class ({found_class}) was not in already existing list of classes. Please try again.')
+
+        if prereqs is None:
+            prereqs = 'None'
+        
+        new_class = Class(class_name, classroom, units, prereqs)
+        classes[f'{new_class.name} / {new_class.classroom}'] = new_class
+        print(f'{new_class.name} in room {new_class.classroom} with units {new_class.units} was added.')
+
+        while True:
+            query = input('Would you like to add more classes? (y/n): ').lower()
+            exit_add = False
+            if 'n' in query:
+                exit_add = True
+                break
+            elif 'y' in query:
+                break
+        
+        if exit_add:
+            break
+        
+def remove_class(classes):
     pass
 
 def edit_student(edited_user, is_admin = False):
@@ -188,7 +255,7 @@ def main():
         for cl in classes_txt.readlines():
             parsed_class = parse_as_class(cl.strip())
             if parsed_class is not None:
-                classes[parsed_class.name] = parsed_class
+                classes[f'{parsed_class.name} / {parsed_class.classroom}'] = parsed_class
 
     exit_login = False
     login_user = None
@@ -215,19 +282,28 @@ def main():
             
     if not exit_login:
         if isinstance(login_user, Admin):
-            print (f'Welcome to your administrator dashboard, {login_user.username}')
-            print ('[1] Create Class')
-            print ('[2] Remove Class')
-            print ('[3] Edit Student Information')
-            num = input ('Please enter your choice: ')
-            choices = {1 : create_class, 2 : remove_class, 3 : edit_student(None, True)} #TODO(Mscizor) : Finish defined functions here
+            print(f'Welcome to your administrator dashboard, {login_user.username}')
+            print('[1] Create Class')
+            print('[2] Remove Class')
+            print('[3] Edit Student Information')
+            num = input('Please enter your choice: ')
+            choices = {1 : create_class(classes), 2 : remove_class(classes)}
+            if num == 1 or num == 2:
+                choices[num]
+            else:
+                pass
+                # print(design_line('=', 100))
+                # students = {i : student for i, student in users if isinstance(student, Student)}
+                # for student in enumerate(students):
+                #     print(f'[{i + 1}] {student.name}')
+                # num = input('Please enter the full name of the student to be edited: ')
         elif isinstance(login_user, Student):
             print (f'Welcome to your Lozol Account, {login_user.name}')
             print ('[1] Enrol in Class')
             print ('[2] Drop a Class')
             print ('[3] Edit your Information')
             num = int(input('Please input your choice: '))
-            choices = {1 : enrol_class, 2 : remove_class, 3 : edit_student(login_user)} #TODO(Mscizor) : Finish defined functions here
+            choices = {1 : enrol_class, 2 : drop_class, 3 : edit_student(login_user)} #TODO(Mscizor) : Finish defined functions here
 
     print (design_line('=', 100))
     print ('Exiting...')
