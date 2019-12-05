@@ -179,63 +179,152 @@ def create_class(classes):
         classes: The already existing list of classes
     '''
 
-    while True:
-        print('List of Classes')
-        for cl in classes.values():
-            print(f'{cl.name} in Room {cl.classroom} with units {cl.units}')
-
-        class_name = None
-        classroom = None
+    try:
         while True:
-            class_name = input('Please input the name of the new class: ')
-            classroom = input("Please input where it's going to be held: ")
-            if f'{class_name} / {classroom}' in classes:
-                print('Class with same name and classroom already found, please try again.')
-            else:
-                break
-        
-        units = None
-        while True:
-            units = int(input('Please input how many units the class will be worth: '))
-            if units < 0:
-                print('Units cannot be less than 0, please try again.')
-            else:
-                break
-        
-        prereqs = None
-        found_class = None
-        while True:
-            prereqs = input('Please input what prereqs the class will or will not have (separated by spaces): ').split()
-            for prereq in prereqs:
-                if prereq not in [cl.name for cl in classes.values()]:
-                    found_class = prereq
-                    break
-            else:
-                break
+            print('Press Ctrl + C at any time to exit creation\n')
+            print('List of Classes')
             
-            print(f'Specified class ({found_class}) was not in already existing list of classes. Please try again.')
+            print(design_line('-', 100))
+            print(f"{'Class Name':<20}{'Classroom':<15}{'Units':<7}")
 
-        if prereqs is None:
-            prereqs = 'None'
-        
-        new_class = Class(class_name, classroom, units, prereqs)
-        classes[f'{new_class.name} / {new_class.classroom}'] = new_class
-        print(f'{new_class.name} in room {new_class.classroom} with units {new_class.units} was added.')
+            for cl in [value for _, value in sorted(classes.items())]:
+                print(f'{cl.name:<20}{cl.classroom:<15}{cl.units:<7}')
 
-        while True:
-            query = input('Would you like to add more classes? (y/n): ').lower()
-            exit_add = False
-            if 'n' in query:
-                exit_add = True
-                break
-            elif 'y' in query:
-                break
-        
-        if exit_add:
-            break
-        
+            print(design_line('-', 100))
+
+            class_name = None
+            classroom = None
+            while True:
+                class_name = input('Please input the name of the new class: ')
+                classroom = input("Please input where it's going to be held: ")
+                if len(class_name) == 0 or len(classroom) == 0:
+                    print('Class name or classroom name cannot be blank, please try again.')
+                elif len(class_name) >= 20:
+                    print('Class name is too long (>= 20 characters), please try again.')
+                elif len(classroom) >= 15:
+                    print('Classroom name is too long (>= 15 characters), please try again.')
+                elif f'{class_name} / {classroom}' in classes:
+                    print('Class with same name and classroom already found, please try again.')
+                else:
+                    break
+                print(design_line('-', 100))
+            
+            units = None
+            while True:
+                try:
+                    units = int(input('Please input how many units the class will be worth: '))
+                    if units < 0 or units > 50:
+                        print('Units cannot be less than 0 or more than 50, please try again.')
+                    else:
+                        break
+                except ValueError:
+                    print('Input was not an integer, please try again.') 
+                print(design_line('-', 100))
+
+            prereqs = None
+            found_class = None
+            while True:
+                prereqs = input('Please input what prereqs the class will or will not have (separated by spaces): ').split()
+                for prereq in prereqs:
+                    if prereq not in [cl.name for cl in classes.values()]:
+                        found_class = prereq
+                        break
+                else:
+                    break
+                print(f'Specified class ({found_class}) was not in already existing list of classes. Please try again.')
+                print(design_line('-', 100))
+
+            if not prereqs:
+                prereqs = ['None']
+            
+            new_class = Class(class_name, classroom, units, prereqs)
+            classes[f'{new_class.name} / {new_class.classroom}'] = new_class
+
+            print(design_line('-', 100))
+            print(f'{new_class.name} in room {new_class.classroom} with units {new_class.units} was added.')
+
+            while True:
+                query = input('Would you like to add more classes? (y/n): ').lower()
+                print(design_line('-', 100))
+                exit_add = False
+                if 'n' in query:
+                    exit_add = True
+                    break
+                elif 'y' in query:
+                    break
+            
+            if exit_add:
+                print('Exiting addition...')
+                print(design_line('-', 100))
+
+    except KeyboardInterrupt:
+        print('\n-- Forced exit, exiting addition... --')
+        print(design_line('-', 100))
+            
 def remove_class(classes):
-    pass
+    '''Asks admin for inputs to delete a number of new classes.
+
+    Asks the admin which of all the previously created classes they want to delete.
+
+    Args:
+        classes: The already existing list of classes
+    '''
+
+    try:
+        while True:
+            print('Press Ctrl + C at any time to exit deletion.\n')
+            print('List of Classes')
+            
+            print(design_line('-', 100))
+            print(f"{'Class Name':<20}{'Classroom':<15}{'Units':<7}")
+
+            for cl in [value for _, value in sorted(classes.items())]:
+                print(f'{cl.name:<20}{cl.classroom:<15}{cl.units:<7}')
+
+            print(design_line('-', 100))
+
+            class_name = None
+            classroom = None
+            while True:
+                class_name = input('Please input the name of the deleted class: ')
+                classroom = input("Please input the class' classroom: ")
+                if len(class_name) == 0 or len(classroom) == 0:
+                    print('Class name or classroom name cannot be blank, please try again.')
+                elif len(class_name) >= 20:
+                    print('Class name is too long (>= 20 characters), please try again.')
+                elif len(classroom) >= 15:
+                    print('Classroom name is too long (>= 15 characters), please try again.')
+                elif f'{class_name} / {classroom}' not in classes:
+                    print('Specified combination of class and classroom is not in classes, please try again.')
+                else:
+                    del classes[f'{class_name} / {classroom}']
+                    break
+                print(design_line('-', 100))
+
+            print(design_line('-', 100))
+            exit_del = False
+            if class_name == classroom == stop:
+                exit_del = True
+            else:
+                print(f'{class_name} in room {classroom} was deleted.')
+
+            while not exit_del:
+                query = input('Would you like to delete more classes? (y/n): ').lower()
+                print(design_line('-', 100))
+                if 'n' in query:
+                    exit_del = True
+                    break
+                elif 'y' in query:
+                    break
+            
+            if exit_del:
+                print('Exiting deletion...')
+                print(design_line('-', 100))
+                break
+
+    except KeyboardInterrupt:
+        print('\n-- Forced exit, exiting deletion... --')
+        print(design_line('-', 100))
 
 def edit_student(edited_user, is_admin = False):
     pass
@@ -286,10 +375,11 @@ def main():
             print('[1] Create Class')
             print('[2] Remove Class')
             print('[3] Edit Student Information')
-            num = input('Please enter your choice: ')
-            choices = {1 : create_class(classes), 2 : remove_class(classes)}
+            num = int(input('Please enter your choice: '))
+            print(design_line('=', 100))
+            choices = {1 : create_class, 2 : remove_class}
             if num == 1 or num == 2:
-                choices[num]
+                choices[num](classes)
             else:
                 pass
                 # print(design_line('=', 100))
@@ -298,10 +388,10 @@ def main():
                 #     print(f'[{i + 1}] {student.name}')
                 # num = input('Please enter the full name of the student to be edited: ')
         elif isinstance(login_user, Student):
-            print (f'Welcome to your Lozol Account, {login_user.name}')
-            print ('[1] Enrol in Class')
-            print ('[2] Drop a Class')
-            print ('[3] Edit your Information')
+            print(f'Welcome to your Lozol Account, {login_user.name}')
+            print('[1] Enrol in Class')
+            print('[2] Drop a Class')
+            print('[3] Edit your Information')
             num = int(input('Please input your choice: '))
             choices = {1 : enrol_class, 2 : drop_class, 3 : edit_student(login_user)} #TODO(Mscizor) : Finish defined functions here
 
