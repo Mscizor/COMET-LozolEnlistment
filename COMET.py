@@ -37,7 +37,6 @@
                 Take Class
                 Drop Class
 """
-import json
 
 class User:
     def __init__(self, username, password):
@@ -76,18 +75,21 @@ class Course:
         return ''.join(info)
 
 class Class:
-    def __init__(self, course_name, classroom):
+    def __init__(self, course_name, classroom, student_ids):
         self.course_name = course_name
         self.classroom = classroom
+        self.student_ids = student_ids
     
     def info(self):
-        return f'{self.course_name} / {self.classroom}'
+        info = [f'{self.course_name} / {self.classroom} / ']
+        for s_id in self.student_ids:
+            info.append(f'{s_id} ')
+        return ''.join(info)
 
-class ClassAssignment:
-    def __init__(self, student_id, prev_enrolled, curr_enrolled):
+class PrevEnrolments:
+    def __init__(self, student_id, prev_enrolled):
         self.student_id = student_id
         self.prev_enrolled = prev_enrolled
-        self.curr_enrolled = curr_enrolled
     
     def info(self):
         info = [f'{self.student_id} / ']
@@ -97,14 +99,6 @@ class ClassAssignment:
         else: 
             for pe in self.prev_enrolled:
                 info.append(f'{pe} ')
-
-        info.append('- ')
-        
-        if not self.curr_enrolled:
-            info.append(' ')
-        else:
-            for ce in self.curr_enrolled:
-                info.append(f'{ce} ')
 
         return ''.join(info)
 
@@ -145,12 +139,10 @@ def parse_as_class(cl):
         A Class with the relevant information from the string
     '''
     read = cl.split(' / ')
-    if len(read) != 2:
+    if len(read) != 3:
         return None
     else:
-        course_name = read[0]
-        classroom = read[1]
-        return Class(course_name, classroom)
+        return Class(read[0], read[1], read[2].split())
 
 def parse_as_course(course):
     '''Takes a string representing course info and creates a course with that information.
@@ -170,27 +162,23 @@ def parse_as_course(course):
     else:
         return Course(read[0], int(read[1]), read[2].split())
 
-def parse_as_assignment(assignment):
-    '''Takes a string representing a student and their classes and updates the corresponding student in
-    the list of users.
+def parse_as_prev_enrolments(prev_enrolments):
+    '''Takes a string representing a student and their previous enrolments and returns a class representing that
 
-    Parses a string and gets the relevant information such as the student ID and their previously enrolled and
-    currently enrolled classes and updates the student in the database of users
+    Parses a string and gets the relevant information such as the student ID and their previously enrolled courses
+    returns a PrevEnrolment that links the two
 
     Args:
-        assignment: String representation of the student and their prev. and current classes
-        users: The database of users
-    
+        prev_enrolments: String representation of the student and their previous enrolments
+
     Returns:
-        A ClassAssignment with the relevant information from the string
+        A PrevEnrolments with the relevant information from the string
     '''
-    read = assignment.split(' / ')
+    read = prev_enrolments.split(' / ')
     if len(read) != 2:
         return None
     else:
-        prev_enrolled = read[1].split('-')[0].strip()
-        curr_enrolled = read[1].split('-')[1].strip()
-        return ClassAssignment(read[0], prev_enrolled.split(), curr_enrolled.split())
+        return PrevEnrolments(read[0], read[1].split())
 
 def design_line(s, num):
     '''Returns a line of the specified string a number of times.
@@ -216,7 +204,7 @@ def design_line(s, num):
         str.append (s)
     return ''.join(str)
 
-def enrol_class(student, classes, class_assignments):
+def enrol_class(student, courses, classes, prev_enrolments):
     '''Asks student in which classes the student wants to enrol in.
 
     Asks the student in which classes of the already created classes the student wants to enrol in,
@@ -225,53 +213,75 @@ def enrol_class(student, classes, class_assignments):
     Args:
         student: The student that will enrol in classes
         classes: The already existing list of classes
-        class_assignments: The already existing list of students with their current and past enrolments
+        prev_enrolments: The already existing list of students with their current and past enrolments
     '''
-    
-    student_assignment = class_assignments[student.username]
-    prev_enrolled = student_assignment.prev_enrolled
-    curr_enrolled = student_assignment.curr_enrolled
-    unit_limit = student.unit_limit
 
+    prev_enrolments = prev_enrolments[student.username].prev_enrolled
     try:
         while True:
+            curr_enrolled = set()
+            courses_enrolled = set()
+            units_remaining = student.unit_limit
+            for cl in classes.values():
+                if student.username in cl.student_ids:
+                    courses_enrolled.add(cl.course_name)
+                    curr_enrolled.add(f'{cl.course_name} / {cl.classroom}')
+                    units_remaining -= courses[cl.course_name].units
+
+            avail_classes = set()
+            for cl in classes.values():
+                course = courses[cl.course_name]
+                # Lengthy way of checking if can fit in units and the course of the class has not been previously or currently enrolled
+                if course.units <= units_remaining and cl.course_name not in courses_enrolled and cl.course_name not in prev_enrolments:
+                    for prereq in course.prereqs:
+                        if prereq not in prev_enrolments:
+                            break
+                    else:
+                        avail_classes.add(cl)
+
+            if not avail_classes:
+                print('No classes available for you to enrol in (may be due to units remaining, or previous/current enrolments).')
+                print('Exiting enrolment...')
+                break
+
             print('Press Ctrl + C at any time to exit enrolling of classes\n')
             print('List of Classes')
 
             print(design_line('-', 100))
-            print(f"{'Class Name':<20}{'Classroom':<15}{'Units':<7}{'Prerequisites':<30}")
+            print(f"{'Class Name':<20}{'Classroom':<15}")
 
-            for cl in [value for _, value in sorted(classes.items())]:
-                prereq_str = ', '.join(cl.prereqs)
-                if len(prereq_str) >= 25:
-                    prereq_str = f'{prereq_str[:25]}...'
-                print(f'{cl.name:<20}{cl.classroom:<15}{cl.units:<7}{prereq_str:<30}')
+            def take_name(cl):
+                return cl.course_name
+
+            for cl in sorted(avail_classes, key = take_name):
+                print(f'{cl.course_name:<20}{cl.classroom:<15}')
 
             print(design_line('-', 100))
 
             print('You are currently enrolled in: ')
-            for ce in curr_enrolled:
-                print(ce)
+            if not curr_enrolled:
+                print('No classes')
+            else:
+                for ce in curr_enrolled:
+                    print(ce)
             
             print(design_line('-', 100))
 
-            class_name = input('Please input the name of the class you want to enrol in: ')
-            classroom = input("Please input where it's going to be held: ")
-            
-            # if len(class_name) == 0 or len(classroom) == 0:
-            #     print('Class name or classroom name cannot be blank, please try again.')
-            # elif len(class_name) >= 20:
-            #     print('Class name is too long (>= 20 characters), please try again.')
-            # elif len(classroom) >= 15:
-            #     print('Classroom name is too long (>= 15 characters), please try again.')
-            # elif f'{class_name} / {classroom}' not in classes:
-            #     print('Class with same name and classroom not found, please try again.')
-            # elif class_name in prev_enrolled or class_name in curr_enrolled:
-            #     print('You have already enrolled in this currently/before, please try again.')
-            # elif classes[f'{class_name} / {classroom}'].units == 0:
-            #     pass
-            # else:
-            #     break
+            while True:
+                course_name = input('Please input the name of the class you want to enrol in: ')
+                classroom = input("Please input where it's going to be held: ")
+                
+                if not course_name or not classroom:
+                    print('Class name or classroom name cannot be blank, please try again.')
+                elif len(course_name) >= 20:
+                    print('Class name is too long (>= 20 characters), please try again.')
+                elif len(classroom) >= 15:
+                    print('Classroom name is too long (>= 15 characters), please try again.')
+                elif classes[f'{course_name} / {classroom}'] not in avail_classes:
+                    print('Class with same name and classroom not found, please try again.')
+                else:
+                    classes[f'{course_name} / {classroom}'].student_ids.append(student.username)
+                    break
 
             exit_enrol = False
             while True:
@@ -292,7 +302,7 @@ def enrol_class(student, classes, class_assignments):
         print('\n-- Forced exit, exiting dropping... --')
         print(design_line('-', 100))
 
-def drop_class(student, classes, class_assignments):
+def drop_class(student, classes):
     '''Asks student in which classes the student wants to drop.
 
     Asks the student in which classes of the already created classes the student wants to enrol in.
@@ -300,16 +310,71 @@ def drop_class(student, classes, class_assignments):
     Args:
         student: The student that will enrol in classes
         classes: The already existing list of classes
-        class_assignments: The already existing list of students with their current and past enrolments
+        prev_enrolments: The already existing list of students with their current and past enrolments
     '''
+    
     try:
         while True:
+            curr_enrolled = set()
+            for cl in classes.values():
+                if student.username in cl.student_ids:
+                    curr_enrolled.add(cl)
+
+            if not curr_enrolled:
+                print('No available classes to drop.')
+                print('Exiting dropping...')
+                break
+
             print('Press Ctrl + C at any time to exit dropping of classes\n')
+            print('List of Currently Enrolled in Classes')
+
+            print(design_line('-', 100))
+            print(f"{'Class Name':<20}{'Classroom':<15}")
+
+            def take_name(cl):
+                return cl.course_name
+
+            for cl in sorted(curr_enrolled, key = take_name):
+                print(f'{cl.course_name:<20}{cl.classroom:<15}')
+
+            print(design_line('-', 100))
+
+            while True:
+                course_name = input('Please input the name of the class you want to drop: ')
+                classroom = input("Please input where the class is held: ")
+                
+                if not course_name or not classroom:
+                    print('Class name or classroom name cannot be blank, please try again.')
+                elif len(course_name) >= 20:
+                    print('Class name is too long (>= 20 characters), please try again.')
+                elif len(classroom) >= 15:
+                    print('Classroom name is too long (>= 15 characters), please try again.')
+                elif classes[f'{course_name} / {classroom}'] not in curr_enrolled:
+                    print('Class with same name and classroom not found, please try again.')
+                else:
+                    classes[f'{course_name} / {classroom}'].student_ids.remove(student.username)
+                    break
+
+            exit_enrol = False
+            while True:
+                query = input('Would you like to drop more classes? (y/n): ').lower()
+                print(design_line('-', 100))
+                if 'n' in query:
+                    exit_enrol = True
+                    break
+                elif 'y' in query:
+                    break
+            
+            if exit_enrol:
+                print('Exiting enrolling...')
+                print(design_line('-', 100))
+                break
+
     except KeyboardInterrupt:
         print('\n-- Forced exit, exiting dropping... --')
         print(design_line('-', 100))
 
-def create_class(classes):
+def create_class(courses, classes):
     '''Asks admin for inputs to create a number of new classes.
 
     Asks the admin for details which include name of classes, classroom number, number of units, 
@@ -323,65 +388,52 @@ def create_class(classes):
         while True:
             print('Press Ctrl + C at any time to exit creation\n')
             print('List of Classes')
-            
             print(design_line('-', 100))
-            print(f"{'Class Name':<20}{'Classroom':<15}{'Units':<7}")
+            print(f"{'Class Name':<20}{'Classroom':<15}")
 
-            for cl in [value for _, value in sorted(classes.items())]:
-                print(f'{cl.name:<20}{cl.classroom:<15}{cl.units:<7}')
+            if not classes:
+                print('No Classes Available')
+            else:
+                for cl in [value for _, value in sorted(classes.items())]:
+                    print(f'{cl.course_name:<20}{cl.classroom:<15}')
 
             print(design_line('-', 100))
 
-            # class_name = None
-            # classroom = None
-            # while True:
-            #     class_name = input('Please input the name of the new class: ')
-            #     classroom = input("Please input where it's going to be held: ")
-            #     if len(class_name) == 0 or len(classroom) == 0:
-            #         print('Class name or classroom name cannot be blank, please try again.')
-            #     elif len(class_name) >= 20:
-            #         print('Class name is too long (>= 20 characters), please try again.')
-            #     elif len(classroom) >= 15:
-            #         print('Classroom name is too long (>= 15 characters), please try again.')
-            #     elif f'{class_name} / {classroom}' in classes:
-            #         print('Class with same name and classroom already found, please try again.')
-            #     else:
-            #         break
-            #     print(design_line('-', 100))
+            if not courses:
+                print('No courses available to make a class for.')
+                print('Exiting creation...')
+                break
+
+            print('List of Courses')
+            print(f"{'Course Name':<20}{'Units':<7}")
             
-            # units = None
-            # while True:
-            #     try:
-            #         units = int(input('Please input how many units the class will be worth: '))
-            #         if units < 0 or units > 50:
-            #             print('Units cannot be less than 0 or more than 50, please try again.')
-            #         else:
-            #             break
-            #     except ValueError:
-            #         print('Input was not an integer, please try again.') 
-            #     print(design_line('-', 100))
+            for c in [value for _, value in sorted(courses.items())]:
+                print(f'{c.course_name:<20}{c.units:<7}')
 
-            # prereqs = None
-            # found_class = None
-            # while True:
-            #     prereqs = input('Please input what prereqs the class will or will not have (separated by spaces): ').split()
-            #     for prereq in prereqs:
-            #         if prereq not in [cl.name for cl in classes.values()]:
-            #             found_class = prereq
-            #             break
-            #     else:
-            #         break
-            #     print(f'Specified class ({found_class}) was not in already existing list of classes. Please try again.')
-            #     print(design_line('-', 100))
+            print(design_line('-', 100))
 
-            # if not prereqs:
-            #     prereqs = ['None']
-            
-            # new_class = Class(class_name, classroom, units, prereqs)
-            # classes[f'{new_class.name} / {new_class.classroom}'] = new_class
+            course_name = None
+            classroom = None
+            while True:
+                course_name = input('Please input the name of the course of the new class: ')
+                classroom = input("Please input where it's going to be held: ")
+                if not course_name or not classroom:
+                    print('Course name or classroom name cannot be blank, please try again.')
+                elif len(course_name) >= 20:
+                    print('Course name is too long (>= 20 characters), please try again.')
+                elif len(classroom) >= 15:
+                    print('Classroom name is too long (>= 15 characters), please try again.')
+                elif f'{course_name} / {classroom}' in classes:
+                    print('Class with same name and classroom already found, please try again.')
+                elif course_name not in courses:
+                    print('Course not in previously made courses, please try again.')
+                else:
+                    classes[f'{course_name} / {classroom}'] = Class(course_name, classroom, list())
+                    break
+                print(design_line('-', 100))
 
-            # print(design_line('-', 100))
-            # print(f'{new_class.name} in room {new_class.classroom} with units {new_class.units} was added.')
+            print(design_line('-', 100))
+            print(f'{course_name} in room {classroom} was added.')
 
             exit_add = False
             while True:
@@ -417,33 +469,33 @@ def remove_class(classes):
             print('List of Classes')
             
             print(design_line('-', 100))
-            print(f"{'Class Name':<20}{'Classroom':<15}{'Units':<7}")
+            print(f"{'Class Name':<20}{'Classroom':<15}")
 
             for cl in [value for _, value in sorted(classes.items())]:
-                print(f'{cl.name:<20}{cl.classroom:<15}{cl.units:<7}')
+                print(f'{cl.course_name:<20}{cl.classroom:<15}')
 
             print(design_line('-', 100))
 
-            # class_name = None
-            # classroom = None
-            # while True:
-            #     class_name = input('Please input the name of the deleted class: ')
-            #     classroom = input("Please input the class' classroom: ")
-            #     if len(class_name) == 0 or len(classroom) == 0:
-            #         print('Class name or classroom name cannot be blank, please try again.')
-            #     elif len(class_name) >= 20:
-            #         print('Class name is too long (>= 20 characters), please try again.')
-            #     elif len(classroom) >= 15:
-            #         print('Classroom name is too long (>= 15 characters), please try again.')
-            #     elif f'{class_name} / {classroom}' not in classes:
-            #         print('Specified combination of class and classroom is not in classes, please try again.')
-            #     else:
-            #         del classes[f'{class_name} / {classroom}']
-            #         break
-            #     print(design_line('-', 100))
+            course_name = None
+            classroom = None
+            while True:
+                course_name = input('Please input the name of the to be deleted class: ')
+                classroom = input("Please input the class' classroom: ")
+                if not course_name or not classroom:
+                    print('Class name or classroom name cannot be blank, please try again.')
+                elif len(course_name) >= 20:
+                    print('Class name is too long (>= 20 characters), please try again.')
+                elif len(classroom) >= 15:
+                    print('Classroom name is too long (>= 15 characters), please try again.')
+                elif f'{course_name} / {classroom}' not in classes:
+                    print('Specified combination of class and classroom is not in classes, please try again.')
+                else:
+                    del classes[f'{course_name} / {classroom}']
+                    break
+                print(design_line('-', 100))
 
-            # print(design_line('-', 100))
-            # print(f'{class_name} in room {classroom} was deleted.')
+            print(design_line('-', 100))
+            print(f'{course_name} in room {classroom} was deleted.')
 
             exit_del = False
             while True:
@@ -465,19 +517,172 @@ def remove_class(classes):
         print(design_line('-', 100))
 
 def create_course(courses):
-    pass
+    '''Asks admin for inputs to create a number of new courses.
 
-def remove_course(courses):
-    pass
+    Asks the admin for details which include name of courses, number of units, 
+    and prerequisites to create any number of new courses.
 
-def edit_student(edited_user, is_admin = False):
-    pass
+    Args:
+        courses: The already existing list of courses
+    '''
+
+    try:
+        while True:
+            print('Press Ctrl + C at any time to exit creation\n')
+            print('List of Courses')
+            
+            print(design_line('-', 100))
+            print(f"{'Course Name':<20}{'Units':<7}")
+
+            for c in [value for _, value in sorted(courses.items())]:
+                print(f'{c.course_name:<20}{c.units:<7}')
+
+            print(design_line('-', 100))
+
+            course_name = None
+            while True:
+                course_name = input('Please input the name of the new course: ')
+                if not course_name:
+                    print('Course name cannot be blank, please try again.')
+                elif len(course_name) >= 20:
+                    print('Course name is too long (>= 20 characters), please try again.')
+                elif course_name in courses:
+                    print('Course with same name already found, please try again.')
+                else:
+                    break
+                print(design_line('-', 100))
+            
+            units = None
+            while True:
+                try:
+                    units = int(input('Please input how many units the course will be worth: '))
+                    if units < 0 or units > 50:
+                        print('Units cannot be less than 0 or more than 50, please try again.')
+                    else:
+                        break
+                except ValueError:
+                    print('Input was not an integer, please try again.') 
+                print(design_line('-', 100))
+
+            prereqs = None
+            while True:
+                prereqs = input('Please input what prereqs the course will or will not have (separated by spaces): ').strip().split()
+                for prereq in prereqs:
+                    if prereq not in courses:
+                        break
+                else:
+                    break
+                print('At least one of the prerequisites specified was not in already existing list of classes. Please try again.')
+                print(design_line('-', 100))
+
+            if not prereqs:
+                prereqs = ['None']
+            
+            new_course = Course(course_name, units, prereqs)
+            courses[course_name] = new_course
+
+            print(design_line('-', 100))
+            print(f'{new_course.course_name} with units {new_course.units} was added.')
+
+            exit_add = False
+            while True:
+                query = input('Would you like to add more courses? (y/n): ').lower()
+                print(design_line('-', 100))
+                if 'n' in query:
+                    exit_add = True
+                    break
+                elif 'y' in query:
+                    break
+            
+            if exit_add:
+                print('Exiting addition...')
+                print(design_line('-', 100))
+                break
+
+    except KeyboardInterrupt:
+        print('\n-- Forced exit, exiting addition... --')
+        print(design_line('-', 100))
+
+def remove_course(courses, classes):
+    '''Asks admin for inputs to remove a number of new courses.
+
+    Asks the admin which of all the previously created courses they want to delete.
+
+    Args:
+        courses: The already existing list of courses
+    '''
+
+    try:
+        while True:
+            unavail_courses = set()
+            for course in courses.values():
+                unavail_courses.update(course.prereqs)
+
+            for cl in classes.values():
+                unavail_courses.add(cl.course_name)
+            
+            avail_courses = set()
+            for c in [c for _, c in sorted(courses.items())]:
+                if c.course_name not in unavail_courses:
+                    avail_courses.add(c)
+
+            if not avail_courses:
+                print('No available courses to delete (may be because all courses have a class/is a prerequisite of a current course).')
+                print('Exiting deletion...')
+                break
+
+            print('Press Ctrl + C at any time to exit creation\n')
+            print('List of Courses that can be Deleted')
+            
+            print(design_line('-', 100))
+            print(f"{'Course Name':<20}{'Units':<7}")
+
+            for c in avail_courses:
+                print(f'{c.course_name:<20}{c.units:<7}')
+            print(design_line('-', 100))
+
+            course_name = None
+            while True:
+                course_name = input('Please input the name of the to be deleted course: ')
+                if not course_name:
+                    print('Course name cannot be blank, please try again.')
+                elif len(course_name) >= 20:
+                    print('Course name is too long (>= 20 characters), please try again.')
+                elif course_name not in avail_courses:
+                    print('Course name not found, please try again.')
+                else:
+                    del courses[course_name]
+                    break
+                print(design_line('-', 100))
+
+            print(design_line('-', 100))
+            print(f'{course_name} was deleted.')
+
+            exit_del = False
+            while True:
+                query = input('Would you like to delete more courses? (y/n): ').lower()
+                print(design_line('-', 100))
+                if 'n' in query:
+                    exit_del = True
+                    break
+                elif 'y' in query:
+                    break
+            
+            if exit_del:
+                print('Exiting deletion...')
+                print(design_line('-', 100))
+                break
+
+    except KeyboardInterrupt:
+        print('\n-- Forced exit, exiting deletion... --')
+        print(design_line('-', 100))
+
 
 def main():
     users = {}
     courses = {}
     classes = {}
-    class_assignments = {}
+    prev_enrolments = {}
 
     with open('users.txt') as users_txt:
         for user in users_txt.readlines():
@@ -493,15 +698,15 @@ def main():
 
     with open('classes.txt') as classes_txt:
         for cl in classes_txt.readlines():
-            parsed_class = parse_as_class(cl.strip())
+            parsed_class = parse_as_class(cl.strip('\n'))
             if parsed_class is not None:
                 classes[f'{parsed_class.course_name} / {parsed_class.classroom}'] = parsed_class
 
-    with open('class_assignments.txt') as class_assignments_txt:
-        for assignment in class_assignments_txt.readlines():
-            parsed_assignment = parse_as_assignment(assignment.strip())
-            if parsed_assignment is not None:
-                class_assignments[parsed_assignment.student_id] = parsed_assignment
+    with open('prev_enrolments.txt') as prev_enrolments_txt:
+        for p_enrol in prev_enrolments_txt.readlines():
+            parsed_p_enrol = parse_as_prev_enrolments(p_enrol.strip('\n'))
+            if parsed_p_enrol is not None:
+                prev_enrolments[parsed_p_enrol.student_id] = parsed_p_enrol
 
     exit_login = False
     login_user = None
@@ -533,58 +738,58 @@ def main():
             print('[2] Remove Class')
             print('[3] Create Course')
             print('[4] Remove Course')
-            # print('[3] Edit Student Information')
             num = int(input('Please enter your choice: '))
             print(design_line('=', 100))
-            choices = {1 : create_class, 2 : remove_class, 3 : create_course, 4 : remove_course}
-            if num == 1 or num == 2:
-                choices[num](classes)
-            elif num == 3 or num == 4:
-                pass
-                # choices[num](courses)
-            else:
-                pass
-                # print(design_line('=', 100))
-                # students = {i : student for i, student in users if isinstance(student, Student)}
-                # for student in enumerate(students):
-                #     print(f'[{i + 1}] {student.name}')
-                # num = input('Please enter the full name of the student to be edited: ')
+            if num == 1:
+                create_class(courses, classes)
+            elif num == 2:
+                remove_class(classes)
+            elif num == 3:
+                create_course(courses)
+            elif num == 4:
+                remove_course(courses, classes)
         elif isinstance(login_user, Student):
             print(f'Welcome to your Lozol Account, {login_user.name}')
             print('[1] Enrol in Class')
             print('[2] Drop a Class')
-            # print('[3] Edit your Information')
             num = int(input('Please input your choice: '))
-            choices = {1 : enrol_class, 2 : drop_class, 3 : edit_student} #TODO(Mscizor) : Finish defined functions here
-            if num == 1 or num == 2:
-                choices[num](login_user, classes, class_assignments)
+            if num == 1:
+                enrol_class(login_user, courses, classes, prev_enrolments)
+            elif num == 2:
+                drop_class(login_user, classes)
 
     print (design_line('=', 100))
     print ('Exiting...')
 
-    with open('users.txt', 'w') as users_txt:
-        for i, user in enumerate(users.values()):
-            users_txt.write(user.info())
-            if i != len(users.values()) - 1:
-                users_txt.write('\n')
+    while True:
+        save = input('Save changes? (y/n): ').lower()
+        if 'y' in save:
+            with open('users.txt', 'w') as users_txt:
+                for i, user in enumerate(users.values()):
+                    users_txt.write(user.info())
+                    if i != len(users.values()) - 1:
+                        users_txt.write('\n')
 
-    with open('courses.txt', 'w') as courses_txt:
-        for i, user in enumerate(courses.values()):
-            courses_txt.write(user.info())
-            if i != len(courses.values()) - 1:
-                courses_txt.write('\n')
+            with open('courses.txt', 'w') as courses_txt:
+                for i, user in enumerate(courses.values()):
+                    courses_txt.write(user.info())
+                    if i != len(courses.values()) - 1:
+                        courses_txt.write('\n')
 
-    with open('classes.txt', 'w') as classes_txt:
-        for i, cl in enumerate(classes.values()):
-            classes_txt.write(cl.info())
-            if i != len(classes.values()) - 1:
-                classes_txt.write('\n')
+            with open('classes.txt', 'w') as classes_txt:
+                for i, cl in enumerate(classes.values()):
+                    classes_txt.write(cl.info())
+                    if i != len(classes.values()) - 1:
+                        classes_txt.write('\n')
 
-    with open('class_assignments.txt', 'w') as class_assignments_txt:
-        for i, st in enumerate(class_assignments.values()):
-            class_assignments_txt.write(st.info())
-            if i != len(class_assignments.values()) - 1:
-                class_assignments_txt.write('\n')
+            with open('prev_enrolments.txt', 'w') as prev_enrolments_txt:
+                for i, st in enumerate(prev_enrolments.values()):
+                    prev_enrolments_txt.write(st.info())
+                    if i != len(prev_enrolments.values()) - 1:
+                        prev_enrolments_txt.write('\n')
+            break
+        elif 'n' in save:
+            break
 
 if __name__ == '__main__':
     main()
