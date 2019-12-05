@@ -1,5 +1,6 @@
-Admin - test - test
-Admin - admin - admin
-Admin - magic - two
-Admin - super - man
-Student - 11828579 - password - Jan Uriel Marcelo - 21
+Admin / test / test
+Admin / admin / admin
+Admin / magic / two
+Admin / super / man
+Student / 11828579 / password / Jan Uriel Marcelo / 21
+Student / 28285799 / hunter2 / Hunter x Hunter / 23
