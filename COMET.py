@@ -90,9 +90,37 @@ class Class:
         self.prereqs.remove(prereq)
     
     def info(self):
-        info = [f'{self.name} / {self.classroom} - {self.units} - ']
-        for cl in self.prereqs:
-            info.append (f'{cl} ')
+        info = [f'{self.name} / {self.classroom} - {self.units} : ']
+        if not self.prereqs:
+            info.append(' ')
+        else:  
+            for cl in self.prereqs:
+                info.append(f'{cl} ')
+        return ''.join(info)
+
+class ClassAssignment:
+    def __init__(self, student_id, prev_enrolled, curr_enrolled):
+        self.student_id = student_id
+        self.prev_enrolled = prev_enrolled
+        self.curr_enrolled = curr_enrolled
+    
+    def info(self):
+        info = [f'{self.student_id} - ']
+
+        if not self.prev_enrolled:
+            info.append(' ')
+        else: 
+            for pe in self.prev_enrolled:
+                info.append(f'{pe} ')
+
+        info.append('/ ')
+        
+        if not self.curr_enrolled:
+            info.append(' ')
+        else:
+            for ce in self.curr_enrolled:
+                info.append(f'{ce} ')
+
         return ''.join(info)
 
 def parse_as_user(user):
@@ -132,12 +160,32 @@ def parse_as_class(cl):
         Either a Student or an Admin with the relevant information given in the string.
     '''
     read = cl.split(' - ')
-    if len(read) < 3:
+    if len(read) < 2:
         return None
     else:
-        prereqs = read[2].split(' ')
+        enrol_details = read[1].split(' :')
         class_details = read[0].split(' / ')
-        return Class(class_details[0], class_details[1], read[1], prereqs)
+        return Class(class_details[0], class_details[1], enrol_details[0], enrol_details[1].split())
+
+def parse_as_assignment(assignment):
+    '''Takes a string representing a student and their classes and updates the corresponding student in
+    the list of users.
+
+    Parses a string and gets the relevant information such as the student ID and their previously enrolled and
+    currently enrolled classes and updates the student in the database of users
+
+    Args:
+        assignment: String representation of the student and their prev. and current classes
+        users: The database of users
+    '''
+    read = assignment.split(' - ')
+    if len(read) < 2:
+        return None
+    else:
+        enrolled = read[1].split('/')
+        prev_enrolled = enrolled[0].split()
+        curr_enrolled = enrolled[1].split()
+        return ClassAssignment(read[0], prev_enrolled, curr_enrolled)
 
 def design_line(s, num):
     '''Returns a line of the specified string a number of times.
@@ -163,10 +211,27 @@ def design_line(s, num):
         str.append (s)
     return ''.join(str)
 
-def enrol_class(student, classes):
+def enrol_class(student, classes, class_assignments):
+    '''Asks student in which classes the student wants to enrol in.
+
+    Asks the student in which classes of the already created classes the student wants to enrol in,
+    taking note of unit limit and prerequisites.
+
+    Args:
+        student: The student that will enrol in classes
+        classes: The already existing list of classes
+    '''
     pass
 
-def drop_class(student, classes):
+def drop_class(student, classes, class_assignments):
+    '''Asks student in which classes the student wants to drop.
+
+    Asks the student in which classes of the already created classes the student wants to enrol in.
+
+    Args:
+        student: The student that will enrol in classes
+        classes: The already existing list of classes
+    '''
     pass
 
 def create_class(classes):
@@ -302,13 +367,9 @@ def remove_class(classes):
                 print(design_line('-', 100))
 
             print(design_line('-', 100))
-            exit_del = False
-            if class_name == classroom == stop:
-                exit_del = True
-            else:
-                print(f'{class_name} in room {classroom} was deleted.')
+            print(f'{class_name} in room {classroom} was deleted.')
 
-            while not exit_del:
+            while True:
                 query = input('Would you like to delete more classes? (y/n): ').lower()
                 print(design_line('-', 100))
                 if 'n' in query:
@@ -332,7 +393,7 @@ def edit_student(edited_user, is_admin = False):
 def main():
     classes = {}
     users = {}
-    users['test'] = Admin ('test', 'test')
+    class_assignments = {}
 
     with open('users.txt') as users_txt:
         for user in users_txt.readlines():
@@ -340,11 +401,18 @@ def main():
             if parsed_user is not None:
                 users[parsed_user.username] = parsed_user
             
-    with open('classes.txt')as classes_txt:
+    with open('classes.txt') as classes_txt:
         for cl in classes_txt.readlines():
             parsed_class = parse_as_class(cl.strip())
             if parsed_class is not None:
                 classes[f'{parsed_class.name} / {parsed_class.classroom}'] = parsed_class
+                print(parsed_class.info())
+
+    with open('class_assignments.txt') as class_assignments_txt:
+        for assignment in class_assignments_txt.readlines():
+            parsed_assignment = parse_as_assignment(assignment.strip())
+            if parsed_assignment is not None:
+                class_assignments[parsed_assignment.student_id] = parsed_assignment
 
     exit_login = False
     login_user = None
@@ -357,7 +425,7 @@ def main():
         found = False
         if username not in users or users[username].password != password:
             print('Invalid login details.')
-            while (True):
+            while True:
                 query = input('Exit program? (y or n): ').lower()
                 if 'y' in query: 
                     exit_login = True
@@ -409,6 +477,12 @@ def main():
             classes_txt.write(cl.info())
             if i != len(classes.values()) - 1:
                 classes_txt.write('\n')
+
+    with open('class_assignments.txt', 'w') as class_assignments_txt:
+        for i, st in enumerate(class_assignments.values()):
+            class_assignments_txt.write(st.info())
+            if i != len(class_assignments.values()) - 1:
+                class_assignments_txt.write('\n')
 
 if __name__ == '__main__':
     main()
