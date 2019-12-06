@@ -1,43 +1,3 @@
-"""
-    COMET Project Specifications:
-        
-        Create an enlistment system where students can log in to take or drop classes
-        and admin can create and remove classes.
-
-        Students will have an ID number, name, and unit limit.
-
-        Classes will have classroom, name, units, and prerequisites.
-
-    Program Features:
-        Login Screen ::
-            Menu --
-                Switch to Admin Login
-                Switch to Student Login
-                Quit
-            
-            Admin Login --
-                Username
-                Password
-
-            Student Login --
-                ID Number
-                Password
-
-        User Privileges ::
-            Admin --
-                Create Class
-                    Classroom Number(String)
-                    Name of Class(String)
-                    Number of Units(Integer)
-                    Classes as Prerequisites([Class])
-
-                Remove Class
-            
-            Student --
-                Take Class
-                Drop Class
-"""
-
 class User:
     '''A user which may be either an Admin or a Student
 
@@ -724,6 +684,116 @@ def remove_course(courses, classes):
         print('\n-- Forced exit, exiting deletion... --')
         print(design_line('-', 100))
 
+def edit_students(students):
+    '''Allows the admin to edit any of the students' information directly.
+
+    Asks the admin for details on which students they want to edit information for and
+    what information they want to change.
+    
+    Args:
+        students: All the students currently in the Lozol system
+    '''
+    try:
+        while True:
+            print('Press Ctrl + C at any time to exit editing information')
+            print('List of Students')
+
+            print(design_line('-', 100))
+            
+            print(f"{'ID Number':<10}{'Name':<30}{'Unit Limit':<15}")
+            for student in students.values():
+                print(f'{student.username:<10}{student.name:<30}{student.unit_limit:<15}')
+
+            print(design_line('-', 100))
+
+            id_number = input('Please input the ID number of the student you wish to edit: ')
+            if id_number not in students:
+                print('ID number not in list of students, please try again.')
+                print(design_line('-', 100))
+            else:
+                while True:
+                    student = students[id_number]
+                    print(design_line('-', 100))
+                    print(f"{'Student Name':<30}{'Unit Limit':<15}")
+                    print(f"{student.name:<30}{student.unit_limit:<15}")
+                    print(design_line('-', 100))
+
+                    change = input('Please input whether you want to edit "name", "limit", or "exit": ')  
+                    if change == 'exit':
+                        break
+                    elif change == 'name':
+                        while True:
+                            print(design_line('-', 100))
+                            new_name = input('Please input new name: ')
+                            if len(new_name) >= 30:
+                                print('Name too long, please try again.')
+                            else:
+                                students[id_number].name = new_name
+                                print('Name changed.')
+                                print(design_line('-', 100))
+                                break
+                    elif change == 'limit':
+                        while True:
+                            print(design_line('-', 100))
+                            try:
+                                new_unit_limit = int(input('Please input new unit limit: '))
+                                if new_unit_limit > 30:
+                                    print('Unit limit too large, please try again.')
+                                else:
+                                    students[id_number].unit_limit = new_unit_limit
+                                    print('Unit limit changed.')
+                                    print(design_line('-', 100))
+                                    break
+                            except ValueError:
+                                print('Value given not integer, please try again.')
+                    else:
+                        print('Not one of the choices, please try again.')
+                    print(design_line('-', 100))
+    except KeyboardInterrupt:
+        print('\n-- Forced exit, exiting changing of information.. --')
+        print(design_line('-', 100))
+    pass
+
+def edit_student_password(users, id_number):
+    '''Allows a student to edit their password.
+
+    Asks the student for their old password and then asks for the new password to change their
+    old one.
+
+    Args:
+        users: The whole list of students in the Lozol system
+        id_number: The id number of the student changing their password
+    '''
+    try:
+        student = users[id_number]
+        while True:
+            print('Press Ctrl + C at any time to exit editing password')
+            query = input('Please enter your current password: ')
+            if student.password != query:
+                print('Wrong password, please try again.')
+                print(design_line('-', 100))
+            else:
+                break
+        while True:
+            print(design_line('-', 100))
+            print('Press Ctrl + C at any time to exit editing password')
+            print(design_line('-', 100))
+            print(f"{'ID Number':<10}{'Your Password':<30}")
+            print(f'{student.username:<10}{student.password:<30}')
+            print(design_line('-', 100))
+            query = input('Please input new password: ')
+            confirm = input('Please confirm your new password: ')
+            if query != confirm:
+                print('Passwords not the same, please try again.')
+                print(design_line('-', 100))
+            else:
+                users[id_number].password = query
+                print('Password saved.')
+                print(design_line('-', 100))
+    except KeyboardInterrupt:
+        print('\n-- Forced exit, exiting changing of password.. --')
+        print(design_line('-', 100))
+    pass
 
 def main():
     users = {}
@@ -788,10 +858,11 @@ def main():
                     print('[2] Remove Class')
                     print('[3] Create Course')
                     print('[4] Remove Course')
-                    print('[5] Exit')
+                    print('[5] Edit Student')
+                    print('[6] Exit')
                     try:
                         num = int(input('Please enter your choice: '))
-                        if 1 <= num <= 5:
+                        if 1 <= num <= 6:
                             print(design_line('=', 100))
 
                         if num == 1:
@@ -803,6 +874,12 @@ def main():
                         elif num == 4:
                             remove_course(courses, classes)
                         elif num == 5:
+                            students = {}
+                            for username, user in users.items():
+                                if isinstance(user, Student):
+                                    students[username] = user
+                            edit_students(students)
+                        elif num == 6:
                             exit_login = True
                         else:
                             raise ValueError('Not in choices')
@@ -817,10 +894,11 @@ def main():
                     print(f'Welcome to your Lozol Account, {login_user.name}')
                     print('[1] Enrol in Class')
                     print('[2] Drop a Class')
-                    print('[3] Exit')
+                    print('[3] Change your Password')
+                    print('[4] Exit')
                     try:
                         num = int(input('Please input your choice: '))
-                        if 1 <= num <= 3:
+                        if 1 <= num <= 4:
                             print(design_line('=', 100))
 
                         if num == 1:
@@ -828,6 +906,8 @@ def main():
                         elif num == 2:
                             drop_class(login_user, classes)
                         elif num == 3:
+                            edit_student_password(users, login_user.username)
+                        elif num == 4:
                             exit_login = True
                         else:
                             raise ValueError('Not in choices')
